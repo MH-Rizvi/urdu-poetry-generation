@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+urdu-poetry-env/
+venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and results
+logs/
+results/
+models/
+
+# OS files
+.DS_Store
+Thumbs.db
