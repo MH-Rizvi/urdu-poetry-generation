@@ -13,6 +13,8 @@ dataset = load_dataset("ReySajju742/Urdu-Poetry-Dataset")
 # Step 3: Convert to pandas DataFrame for easier handling
 df = pd.DataFrame(dataset['train'])       # type: ignore # Hugging Face datasets are split into 'train' by default
 
+# save raw dataset
+df.to_csv("data/raw/raw_dataset.csv", index = False)
 # Step 4: Basic exploration
 print("Columns in dataset:", df.columns)
 print("Number of poems:", len(df))
