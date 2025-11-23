@@ -13,7 +13,7 @@ venv/
 
 # Logs and results
 logs/
-results/
+#results/
 models/
 
 # OS files
