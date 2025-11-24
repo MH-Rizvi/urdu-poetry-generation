@@ -1,4 +1,4 @@
-# 02_preprocess_data_char_keras.py
+# 02_preprocess_data.py
 
 import pandas as pd
 from datasets import load_dataset
@@ -73,9 +73,6 @@ input_sequences = pad_sequences(input_sequences, maxlen=MAX_SEQ_LEN, padding='pr
 # Split into X and y
 X = input_sequences[:, :-1]
 y = input_sequences[:, -1]
-
-# Convert y to one-hot vectors
-y = to_categorical(y, num_classes=vocab_size)
 
 print("Number of sequences:", len(X))
 print("Input shape:", X.shape, "Output shape:", y.shape)

@@ -1,4 +1,4 @@
-# 03_train_rnn_char_keras.py
+# 03_train_rnn.py
 
 import os
 import pickle
@@ -20,8 +20,8 @@ PATIENCE = 5
 NUM_CHARS_TO_GENERATE = 200
 SEED_TEXT = "دل کی بات "
 NUM_SAMPLES = 3
-EMBED_DIM = 256
-HIDDEN_DIM = 512
+EMBED_DIM = 100
+HIDDEN_DIM = 150
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Check GPU
@@ -66,13 +66,11 @@ class SimpleRNNModel(nn.Module):
     def __init__(self, vocab_size, embed_dim, hidden_dim):
         super(SimpleRNNModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.embedding_dropout = nn.Dropout(0.2)
-        self.rnn = nn.RNN(embed_dim, hidden_dim, num_layers=3, batch_first=True, dropout=0.4)
+        self.rnn = nn.RNN(embed_dim, hidden_dim,batch_first=True)
         self.fc = nn.Linear(hidden_dim, vocab_size)
         
     def forward(self, x):
         x = self.embedding(x)
-        x = self.embedding_dropout(x)
         out, _ = self.rnn(x)
         out = self.fc(out[:, -1, :])  # last time step
         return out
