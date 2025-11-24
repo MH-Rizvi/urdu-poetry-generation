@@ -199,22 +199,37 @@ def evaluate_model(model):
 # ------------------------------
 # Step 7: Character-level text generation using Keras Tokenizer
 # ------------------------------
-def generate_text(model, seed_text):
+def generate_text(model, seed_text, temperature=0.8):
+    """
+    Generate text using the trained RNN model with temperature-based sampling.
+    
+    Args:
+        model (nn.Module): Trained RNN model
+        seed_text (str): Starting text for generation
+        temperature (float): Controls randomness (higher = more creative)
+    """
     model.eval()
     generated = list(seed_text)
+    
+    # Create a reverse mapping from index to character
+    idx_to_char = {idx: char for char, idx in tokenizer.word_index.items()}
+    
     for _ in range(NUM_CHARS_TO_GENERATE):
-        token_list = tokenizer.texts_to_sequences([''.join(generated)])  # Keras tokenizer
+        token_list = tokenizer.texts_to_sequences([''.join(generated)])
         token_list = torch.tensor(token_list[0][-input_length:], dtype=torch.long).unsqueeze(0).to(DEVICE)
+        
         with torch.no_grad():
-            pred = model(token_list)
-            predicted_id = torch.argmax(pred, dim=-1).item()
-        # Keras tokenizer uses word_index, need reverse mapping
-        next_char = ''
-        for char, idx in tokenizer.word_index.items():
-            if idx == predicted_id:
-                next_char = char
-                break
+            pred = model(token_list).squeeze()
+        
+        # Apply temperature scaling
+        pred = pred / temperature
+        probs = torch.softmax(pred, dim=-1)
+        
+        # Sample next character
+        predicted_id = torch.multinomial(probs, num_samples=1).item()
+        next_char = idx_to_char.get(predicted_id, '')
         generated.append(next_char)
+    
     return ''.join(generated)
 
 # ------------------------------
@@ -230,6 +245,6 @@ for opt_name in ["adam", "rmsprop", "sgd"]:
     print(f"Test Loss ({opt_name}): {test_loss:.4f}, Perplexity: {perplexity:.2f}")
     
     for i in range(NUM_SAMPLES):
-        text = generate_text(model, SEED_TEXT)
+        text = generate_text(model, SEED_TEXT, temperature=0.8)
         with open(os.path.join(model_path, f"generated_sample_{i+1}.txt"), "w", encoding="utf-8") as f:
             f.write(text)
