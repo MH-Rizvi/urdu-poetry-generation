@@ -55,7 +55,7 @@ print("Character vocab size:", vocab_size)
 # ------------------------------
 # Step 4: Sequence preparation using sliding window
 # ------------------------------
-MAX_SEQ_LEN = 50  # characters per sequence
+MAX_SEQ_LEN = 120  # characters per sequence
 input_sequences = []
 
 for line in df['clean_content']:
