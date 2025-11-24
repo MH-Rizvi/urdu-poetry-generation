@@ -1,4 +1,4 @@
-# 03_train_rnn_fixed.py
+# 03_train_rnn_char_keras.py
 
 import os
 import pickle
@@ -17,11 +17,11 @@ from tqdm import tqdm
 NUM_EPOCHS = 20
 BATCH_SIZE = 128
 PATIENCE = 5
-NUM_WORDS_TO_GENERATE = 30
-SEED_TEXT = "دل کی بات"
+NUM_CHARS_TO_GENERATE = 200
+SEED_TEXT = "دل کی بات "
 NUM_SAMPLES = 3
-EMBED_DIM = 100
-HIDDEN_DIM = 150
+EMBED_DIM = 150
+HIDDEN_DIM = 256
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Check GPU
@@ -37,7 +37,7 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # ------------------------------
-# Step 1: Load preprocessed data
+# Step 1: Load preprocessed character data (from Keras Tokenizer)
 # ------------------------------
 X_train = torch.from_numpy(np.load("data/processed/X_train.npy")).long()
 y_train = torch.from_numpy(np.load("data/processed/y_train.npy")).long()
@@ -49,7 +49,7 @@ y_test = torch.from_numpy(np.load("data/processed/y_test.npy")).long()
 with open("data/processed/tokenizer.pkl", "rb") as f:
     tokenizer = pickle.load(f)
 
-vocab_size = len(tokenizer.word_index) + 1
+vocab_size = len(tokenizer.word_index) + 1  # +1 for padding
 input_length = X_train.shape[1]
 
 # ------------------------------
@@ -66,7 +66,7 @@ class SimpleRNNModel(nn.Module):
     def __init__(self, vocab_size, embed_dim, hidden_dim):
         super(SimpleRNNModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.rnn = nn.RNN(embed_dim, hidden_dim, batch_first=True)  # can change to LSTM later
+        self.rnn = nn.RNN(embed_dim, hidden_dim, num_layers=2, batch_first=True, dropout=0.4)
         self.fc = nn.Linear(hidden_dim, vocab_size)
         
     def forward(self, x):
@@ -91,9 +91,9 @@ def train_model(optimizer_name="adam"):
     model = SimpleRNNModel(vocab_size, EMBED_DIM, HIDDEN_DIM).to(DEVICE)
     
     if optimizer_name == "adam":
-        optimizer = optim.Adam(model.parameters())
+        optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     elif optimizer_name == "rmsprop":
-        optimizer = optim.RMSprop(model.parameters())
+        optimizer = optim.RMSprop(model.parameters(), lr=0.001, alpha=0.9)
     elif optimizer_name == "sgd":
         optimizer = optim.SGD(model.parameters(), momentum=0.9)
     
@@ -117,6 +117,7 @@ def train_model(optimizer_name="adam"):
             outputs = model(xb)
             loss = criterion(outputs, yb)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
             optimizer.step()
             
             total_loss += loss.item() * xb.size(0)
@@ -196,20 +197,25 @@ def evaluate_model(model):
     return avg_loss, perplexity
 
 # ------------------------------
-# Step 7: Text generation
+# Step 7: Character-level text generation using Keras Tokenizer
 # ------------------------------
 def generate_text(model, seed_text):
     model.eval()
-    generated = seed_text.split()
-    for _ in range(NUM_WORDS_TO_GENERATE):
-        token_list = [tokenizer.word_index.get(w, 0) for w in generated]
-        token_list = torch.tensor(token_list[-input_length:], dtype=torch.long).unsqueeze(0).to(DEVICE)
+    generated = list(seed_text)
+    for _ in range(NUM_CHARS_TO_GENERATE):
+        token_list = tokenizer.texts_to_sequences([''.join(generated)])  # Keras tokenizer
+        token_list = torch.tensor(token_list[0][-input_length:], dtype=torch.long).unsqueeze(0).to(DEVICE)
         with torch.no_grad():
             pred = model(token_list)
             predicted_id = torch.argmax(pred, dim=-1).item()
-        next_word = tokenizer.index_word.get(predicted_id, '')
-        generated.append(next_word)
-    return ' '.join(generated)
+        # Keras tokenizer uses word_index, need reverse mapping
+        next_char = ''
+        for char, idx in tokenizer.word_index.items():
+            if idx == predicted_id:
+                next_char = char
+                break
+        generated.append(next_char)
+    return ''.join(generated)
 
 # ------------------------------
 # Step 8: Run training for each optimizer
