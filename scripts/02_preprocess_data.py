@@ -1,4 +1,4 @@
-# 02_preprocess_data.py
+# 02_preprocess_data_char_keras.py
 
 import pandas as pd
 from datasets import load_dataset
@@ -6,9 +6,10 @@ import re
 import os
 import numpy as np
 import pickle
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.text import Tokenizer # type: ignore
 from tensorflow.keras.preprocessing.sequence import pad_sequences # type: ignore
-from sklearn.model_selection import train_test_split
+from tensorflow.keras.utils import to_categorical # type: ignore
 
 # ------------------------------
 # Step 0: Ensure processed folder exists
@@ -22,7 +23,7 @@ dataset = load_dataset("ReySajju742/Urdu-Poetry-Dataset")
 df = pd.DataFrame(dataset['train'])  # type: ignore # Hugging Face default split
 
 # ------------------------------
-# Step 2: Text cleaning function
+# Step 2: Text cleaning
 # ------------------------------
 def clean_text(text):
     if not isinstance(text, str):
@@ -39,27 +40,28 @@ print("Number of poems after cleaning:", len(df))
 print("First cleaned poem:\n", df['clean_content'].iloc[0])
 
 # ------------------------------
-# Step 3: Tokenization with limited vocabulary
+# Step 3: Character-level tokenization using Keras Tokenizer
 # ------------------------------
-VOCAB_SIZE = 3000  # Keep only top 3000 words
-tokenizer = Tokenizer(num_words=VOCAB_SIZE, oov_token='<OOV>')
-tokenizer.fit_on_texts(df['clean_content'])
+tokenizer = Tokenizer(char_level=True, oov_token=None)  # char-level tokenizer
+tokenizer.fit_on_texts(df['clean_content'].tolist())
 
+# Save tokenizer
 with open('data/processed/tokenizer.pkl', 'wb') as f:
     pickle.dump(tokenizer, f)
 
-print("Vocabulary size:", min(VOCAB_SIZE, len(tokenizer.word_index)+1))
+vocab_size = len(tokenizer.word_index) + 1  # +1 for padding
+print("Character vocab size:", vocab_size)
 
 # ------------------------------
 # Step 4: Sequence preparation using sliding window
 # ------------------------------
-MAX_SEQ_LEN = 50  # Each sequence will have 50 words (you can adjust)
+MAX_SEQ_LEN = 50  # characters per sequence
 input_sequences = []
 
 for line in df['clean_content']:
     token_list = tokenizer.texts_to_sequences([line])[0]
     if len(token_list) < 2:
-        continue  # skip too short lines
+        continue
     for i in range(1, len(token_list)):
         start_idx = max(0, i-MAX_SEQ_LEN)
         n_gram_sequence = token_list[start_idx:i+1]
@@ -72,6 +74,9 @@ input_sequences = pad_sequences(input_sequences, maxlen=MAX_SEQ_LEN, padding='pr
 X = input_sequences[:, :-1]
 y = input_sequences[:, -1]
 
+# Convert y to one-hot vectors
+y = to_categorical(y, num_classes=vocab_size)
+
 print("Number of sequences:", len(X))
 print("Input shape:", X.shape, "Output shape:", y.shape)
 
@@ -81,7 +86,6 @@ print("Input shape:", X.shape, "Output shape:", y.shape)
 X_train_val, X_test, y_train_val, y_test = train_test_split(
     X, y, test_size=0.1, random_state=42
 )
-
 X_train, X_val, y_train, y_val = train_test_split(
     X_train_val, y_train_val, test_size=0.1111, random_state=42
 )  # 0.1111*0.9≈0.1
