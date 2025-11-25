@@ -20,8 +20,8 @@ PATIENCE = 5
 NUM_CHARS_TO_GENERATE = 200
 SEED_TEXT = "دل کی بات "
 NUM_SAMPLES = 3
-EMBED_DIM = 100
-HIDDEN_DIM = 150
+EMBED_DIM = 256
+HIDDEN_DIM = 512
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("CUDA available:", torch.cuda.is_available())
@@ -65,7 +65,7 @@ class LSTMModel(nn.Module):
     def __init__(self, vocab_size, embed_dim, hidden_dim):
         super(LSTMModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True)
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers= 2,dropout=0.2, batch_first=True)
         self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x):
