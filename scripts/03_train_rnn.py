@@ -88,7 +88,7 @@ def train_model(optimizer_name="adam"):
     elif optimizer_name == "rmsprop":
         optimizer = optim.RMSprop(model.parameters(), lr=0.001, alpha=0.9)
     elif optimizer_name == "sgd":
-        optimizer = optim.SGD(model.parameters(), momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr= 0.01, momentum=0.9)
 
     criterion = nn.CrossEntropyLoss()
     best_val_loss = float("inf")
