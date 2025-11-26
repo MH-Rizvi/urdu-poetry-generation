@@ -2,42 +2,47 @@
 
 import os
 import pickle
+import csv
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 import torch.optim as optim
 from tqdm import tqdm
-
+import random
 from utils import compute_accuracy, evaluate_model, generate_text, save_loss_plot  # type: ignore
 
 # ------------------------------
-# Step 0: Settings
+# Random Seeds
+# ------------------------------
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+# ------------------------------
+# Settings
 # ------------------------------
 NUM_EPOCHS = 20
 BATCH_SIZE = 128
 PATIENCE = 5
 NUM_CHARS_TO_GENERATE = 200
-SEED_TEXT = "دل کی بات "
-NUM_SAMPLES = 3
-EMBED_DIM = 100
-HIDDEN_DIM = 150
+SEED_TEXTS = ["محبت", "دل", "شام", "یاد", "خوشی"]
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Check GPU
-print("CUDA available:", torch.cuda.is_available())
-if torch.cuda.is_available():
-    print("Device:", torch.cuda.get_device_name(torch.cuda.current_device()))
-else:
-    print("Using CPU. Training will be slower.")
 
 MODEL_DIR = "models/"
 RESULTS_DIR = "results/metrics/"
 os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
+CSV_PATH = os.path.join(RESULTS_DIR, "all_metrics.csv")
+
 # ------------------------------
-# Step 1: Load preprocessed character data
+# Load Data
 # ------------------------------
 X_train = torch.from_numpy(np.load("data/processed/X_train.npy")).long()
 y_train = torch.from_numpy(np.load("data/processed/y_train.npy")).long()
@@ -52,19 +57,16 @@ with open("data/processed/tokenizer.pkl", "rb") as f:
 vocab_size = len(tokenizer.word_index) + 1
 input_length = X_train.shape[1]
 
-# ------------------------------
-# Step 2: Create DataLoaders
-# ------------------------------
 train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=BATCH_SIZE)
 test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=BATCH_SIZE)
 
 # ------------------------------
-# Step 3: Define RNN Model
+# RNN Model
 # ------------------------------
 class SimpleRNNModel(nn.Module):
-    def __init__(self, vocab_size, embed_dim, hidden_dim):
-        super(SimpleRNNModel, self).__init__()
+    def __init__(self, vocab_size, embed_dim=100, hidden_dim=150):
+        super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
         self.rnn = nn.RNN(embed_dim, hidden_dim, batch_first=True)
         self.fc = nn.Linear(hidden_dim, vocab_size)
@@ -76,65 +78,53 @@ class SimpleRNNModel(nn.Module):
         return out
 
 # ------------------------------
-# Step 4: Training function
+# Training Function
 # ------------------------------
-def train_model(optimizer_name="adam"):
-    print(f"\nTraining RNN with {optimizer_name} optimizer...")
-
-    model = SimpleRNNModel(vocab_size, EMBED_DIM, HIDDEN_DIM).to(DEVICE)
+def train_model(model, optimizer_name, model_name, hyperparams):
+    model = model.to(DEVICE)
 
     if optimizer_name == "adam":
         optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     elif optimizer_name == "rmsprop":
         optimizer = optim.RMSprop(model.parameters(), lr=0.001, alpha=0.9)
     elif optimizer_name == "sgd":
-        optimizer = optim.SGD(model.parameters(), lr= 0.01, momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     criterion = nn.CrossEntropyLoss()
     best_val_loss = float("inf")
     patience_counter = 0
     history = {"train_loss": [], "val_loss": []}
 
+    save_path = os.path.join(MODEL_DIR, f"{model_name}_{optimizer_name}")
+    os.makedirs(save_path, exist_ok=True)
+
     for epoch in range(NUM_EPOCHS):
         model.train()
-        total_loss = 0
-        total_correct = 0
-
-        loop = tqdm(train_loader, leave=True)
-        loop.set_description(f"Epoch [{epoch+1}/{NUM_EPOCHS}]")
+        total_loss, total_correct = 0, 0
+        loop = tqdm(train_loader)
 
         for xb, yb in loop:
             xb, yb = xb.to(DEVICE), yb.to(DEVICE)
             optimizer.zero_grad()
-
             outputs = model(xb)
             loss = criterion(outputs, yb)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
 
             total_loss += loss.item() * xb.size(0)
             total_correct += compute_accuracy(outputs, yb) * xb.size(0)
 
-            loop.set_postfix(
-                loss=loss.item(),
-                acc=f"{compute_accuracy(outputs, yb):.4f}"
-            )
-
         avg_train_loss = total_loss / len(train_loader.dataset) # type: ignore
         avg_train_acc = total_correct / len(train_loader.dataset) # type: ignore
 
-        # Validation
         model.eval()
-        val_loss_total = 0
-        val_correct_total = 0
-
+        val_loss_total, val_correct_total = 0, 0
         with torch.no_grad():
             for xb, yb in val_loader:
                 xb, yb = xb.to(DEVICE), yb.to(DEVICE)
                 outputs = model(xb)
                 loss = criterion(outputs, yb)
-
                 val_loss_total += loss.item() * xb.size(0)
                 val_correct_total += compute_accuracy(outputs, yb) * xb.size(0)
 
@@ -144,57 +134,59 @@ def train_model(optimizer_name="adam"):
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
 
-        print(
-            f"Epoch {epoch+1}/{NUM_EPOCHS} - "
-            f"Train Loss: {avg_train_loss:.4f}, Train Acc: {avg_train_acc:.4f} - "
-            f"Val Loss: {avg_val_loss:.4f}, Val Acc: {avg_val_acc:.4f}"
-        )
-
-        # Early stopping
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            save_path = os.path.join(MODEL_DIR, f"rnn_{optimizer_name}")
-            os.makedirs(save_path, exist_ok=True)
             torch.save(model.state_dict(), os.path.join(save_path, "model.pt"))
             patience_counter = 0
         else:
             patience_counter += 1
             if patience_counter >= PATIENCE:
-                print("Early stopping triggered")
                 break
 
-    # Save history
     np.save(os.path.join(save_path, "history.npy"), history) # type: ignore
+    save_loss_plot(history, optimizer_name, model_name, RESULTS_DIR)
 
-    # Save loss plot using helper
-    save_loss_plot(history, optimizer_name, "rnn", RESULTS_DIR)
-
-    return model
-
-# ------------------------------
-# Step 5: Run training + evaluation + generation
-# ------------------------------
-for opt_name in ["adam", "rmsprop", "sgd"]:
-    model_path = os.path.join(MODEL_DIR, f"rnn_{opt_name}")
-    os.makedirs(model_path, exist_ok=True)
-
-    model = train_model(opt_name)
-
-    # Use helper evaluate function
     test_loss, perplexity = evaluate_model(model, test_loader, DEVICE)
-    print(f"Test Loss ({opt_name}): {test_loss:.4f}, Perplexity: {perplexity:.2f}")
 
-    # Use helper generation function
-    for i in range(NUM_SAMPLES):
-        text = generate_text(
-            model=model,
-            tokenizer=tokenizer,
-            seed_text=SEED_TEXT,
-            input_length=input_length,
-            device=DEVICE,
-            num_chars=NUM_CHARS_TO_GENERATE,
-            temperature=0.8
-        )
+    for temp in [0.7, 1.0, 1.3]:
+        for seed in SEED_TEXTS:
+            text = generate_text(model, tokenizer, seed, input_length, DEVICE, NUM_CHARS_TO_GENERATE, temp)
+            filename = f"generated_{seed}_temp_{temp}.txt"
+            with open(os.path.join(save_path, filename), "w", encoding="utf-8") as f:
+                f.write(text)
 
-        with open(os.path.join(model_path, f"generated_sample_{i+1}.txt"), "w", encoding="utf-8") as f:
-            f.write(text)
+            write_header = not os.path.exists(CSV_PATH)
+            row = {
+                "model": model_name,
+                "optimizer": optimizer_name,
+                "hyperparams": str(hyperparams),
+                "seed_word": seed,
+                "temperature": temp,
+                "train_loss": avg_train_loss,
+                "train_acc": avg_train_acc,
+                "val_loss": avg_val_loss,
+                "val_acc": avg_val_acc,
+                "test_loss": test_loss,
+                "perplexity": perplexity
+            }
+            with open(CSV_PATH, "a", newline="", encoding="utf-8") as f_csv:
+                writer = csv.DictWriter(f_csv, fieldnames=row.keys())
+                if write_header:
+                    writer.writeheader()
+                writer.writerow(row)
+
+    del model
+    torch.cuda.empty_cache()
+
+# ------------------------------
+# Run
+# ------------------------------
+optimizers = ["adam", "rmsprop", "sgd"]
+
+for opt in optimizers:
+    train_model(
+        model=SimpleRNNModel(vocab_size=vocab_size),
+        optimizer_name=opt,
+        model_name="rnn",
+        hyperparams={"embed_dim": 100, "hidden_dim": 150}
+    )
