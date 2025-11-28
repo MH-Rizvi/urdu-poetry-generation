@@ -1,135 +1,157 @@
 # Urdu Poetry Generation
 
-## Project Overview
-This project explores **Urdu poetry text generation** using sequence models. We implement and compare **Simple RNN, LSTM, and Transformer models** with different optimization algorithms (**Adam, RMSprop, SGD**) to generate coherent, contextually relevant, and grammatically accurate Urdu poetry.  
+This project explores **Urdu poetry text generation** using
+state-of-the-art sequence models. The goal is to generate coherent,
+stylistically rich, and meaningful Urdu poetry using RNN, LSTM, and
+Transformer architectures, trained on a curated classical poetry
+dataset.
 
-The primary goal is to evaluate models both **quantitatively** (loss, perplexity, accuracy) and **qualitatively** (rhyme, meter, human evaluation).
+The project includes **quantitative evaluation (loss, perplexity,
+accuracy)** and **qualitative evaluation (flow, rhyme, human review)**
+to compare model performance across architectures and optimizers.
 
----
+## 📚 Dataset
 
-## Dataset
-- **Source:** [Hugging Face - ReySajju742/Urdu-Poetry-Dataset](https://huggingface.co/datasets/ReySajju742/Urdu-Poetry-Dataset)  
-- **Total poems:** 1,323  
-- **Content:** Classical Urdu poetry (Ghalib, Iqbal, others)  
-- **Format:** Title and content pairs  
-- **Size:** 1.38 MB  
+**Source:** HuggingFace -- `ReySajju742/Urdu-Poetry-Dataset`\
+**Total Poems:** 1,323\
+**Content:** Classical Urdu poetry (Ghalib, Iqbal, Mir, etc.)\
+**Size:** 1.38 MB
 
-**Preprocessing steps:**
-1. Extract individual lines from poems  
-2. Character-level tokenization using Keras Tokenizer  
-3. Vocabulary creation  
-4. Sequence generation using n-grams  
-5. Padding sequences to uniform length  
-6. Train-validation-test split: 80%-10%-10%  
+### Preprocessing Steps
 
----
+-   Extract individual lines from poems\
+-   Character-level tokenization using Keras Tokenizer\
+-   Build vocabulary\
+-   Create n-gram sequences for next-character prediction\
+-   Pad sequences to uniform length\
+-   Train/Val/Test split: **80% / 10% / 10%**
 
-## Project Methodology
+## 🧠 Models Implemented
 
-### Model Architectures
-- **Simple RNN** – Baseline model for sequential prediction  
-- **LSTM (Long Short-Term Memory)** – Handles longer dependencies  
-- **Transformer** – Attention-based sequence modeling  
+### **1. Simple RNN**
 
-### Optimization Algorithms
-- **Adam**  
-- **RMSprop**  
-- **SGD with Momentum**  
+-   Baseline sequential model\
+-   Fast but struggles with long-term dependencies
 
-### Training Configuration
-- **Epochs:** 20–30 (with early stopping on validation loss)  
-- **Batch Size:** 128  
-- **Early Stopping:** Patience = 5  
-- **Device:** GPU recommended for faster training  
+### **2. LSTM (Long Short-Term Memory)**
 
----
+-   Captures longer dependencies\
+-   Best overall performance in this project
 
-## Evaluation
+### **3. Transformer**
 
-### Quantitative Metrics
-- Training & Validation Loss  
-- Test Perplexity  
-- Accuracy (character prediction)  
-- Optional: BLEU, ROUGE, METEOR (for advanced evaluation)  
+-   Self-attention architecture\
+-   High training cost\
+-   Competitive perplexity on tuned versions
 
-### Qualitative Metrics
-- Rhyme, meter, and flow of generated poetry  
-- Human evaluation of coherence and style  
+## ⚙ Optimization Algorithms
 
----
+-   **Adam**
+-   **RMSprop**
+-   **SGD with Momentum**
 
-## Simple RNN Results
+## 🏗 Training Configuration
 
-**Test Loss / Perplexity:**
+-   **Epochs:** 20--30 (Early Stopping enabled)\
+-   **Batch Size:** 128\
+-   **Early Stopping Patience:** 5\
+-   **Hardware:** GPU recommended (LSTM/Transformer especially)
 
-| Optimizer | Test Loss | Perplexity |
-|-----------|-----------|------------|
-| Adam      | 1.6893    | 5.42       |
-| RMSprop   | 1.7041    | 5.50       |
-| SGD       | 1.7978    | 6.04       |
+## 📊 Evaluation Metrics
 
-**Sample Generated Poetry (Seed: `"دل کی بات "`):**
+### Quantitative
 
-- **Adam:**
-دل کی بات چل لیا سی پھر باقی کی کاش میں کوئی یہ روح یا کے لیے اسی سن آمد کیا چیز میں پھر یہ تو تو میں نہ ہوا کر پھر بنا لہو دکھ بھی دعا دام میں پردۂ غفلہ و سوا دل سے مرحمندۂ رکھتا اس شیشہ سے بے حات بھلا گیا بھ
+-   Train & Validation Loss\
+-   Test Perplexity\
+-   Accuracy (character prediction)\
+-   Training Time (minutes)
 
+### Qualitative
 
-- **RMSprop:**
-دل کی بات پہلے وہ تیز نہیں کیجے انساں جو پر ہے تیرے نہ نہیں اسے اے آنکھیں جو پردے کہ جھوٹ کے بال کا میں نے اب تو گرچہ و تیم آتک بھی اگر ان جاتی گا ترے گرش بن دے گی کہ کہیں اس کے مت دیا جتنے سے برباد راتے میں ہے
+-   Rhyme quality\
+-   Meter consistency\
+-   Stylistic coherence\
+-   Human evaluation
 
+## 📈 Model Performance Summary
 
-- **SGD:**
-دل کی بات وہ سکائیں قیاط آتما تھا شرم ترا مانوں سے امشوف خراب کا غم میں نہ کوئی مجھو ہے ہم کو اس کبھی دیکھا ہے گا تھا جاتا ہے کر کچھ بات سے نے بھی تو سکتا ہوگا نہ ہے آگاہ کو حیرت داتے ہیں کہ مجھے آہ وہ وہ گھر ب
+### **Perplexity Comparison (Test Set)**
 
+  Model                         Optimizer   Test Loss    Perplexity   Training Time (mins)
+  ----------------------------- ----------- ------------ ------------ ----------------------
+  RNN                           Adam        1.6948       5.445        300
+  RNN                           RMSprop     1.703        5.491        300
+  RNN                           SGD         1.6898       5.418        300
+  RNN (2-Layer + Dropout 0.2)   Adam        1.6798       5.36         1200
+  LSTM                          Adam        1.5854       4.881        2400
+  LSTM                          RMSprop     1.6406       5.158        1800
+  LSTM                          SGD         1.5899       4.904        3420
+  LSTM (3-Layer)                Adam        **1.5563**   **4.742**    4800
+  Transformer (Set1)            Adam        1.7194       5.581        6000
+  Transformer (Set2)            Adam        1.6902       5.420        10800
 
-> Note: Adam and RMSprop generally generate smoother, more coherent sequences than SGD.  
+## 🎨 Visualizations
 
----
+All plots are available in the `visualizations/` folder:
 
-## Folder Structure
+-   **perplexity_comparison.png**
+-   **training_time_comparison.png**
+-   **perplexity_heatmap.png**
 
-urdu-poetry-project/
-│
-├── data/           # Raw and processed dataset
-├── notebooks/      # Jupyter notebooks for experiments
-├── models/         # Saved models and checkpoints
-├── results/        # Training metrics, plots, generated poetry
-├── logs/           # TensorBoard or other logs
-├── scripts/        # Training and evaluation scripts
-└── main.py         # Entry point for training & evaluation
+## ✍ Sample Generated Poetry
 
+### Seed: **"دل کی بات"**
 
----
+#### **RNN (Adam)**
 
-## Getting Started
+دل کی بات چل لیا سی پھر باقی کی کاش میں کوئی یہ روح یا کے لیے اسی سن آمد
+کیا چیز میں پھر یہ تو تو میں نہ ہوا کر پھر بنا لہو دکھ بھی دعا دام میں
+پردۂ غفلہ و سوا دل سے مرحمندۂ رکھتا اس شیشہ سے بے حات بھلا گیا بھ
 
-### 1. Setup Virtual Environment
-```bash
-python -m venv urdu-poetry-env
-# Activate environment
-# Linux/Mac
-source urdu-poetry-env/bin/activate
-# Windows
-urdu-poetry-env\Scripts\activate
+#### **LSTM (Adam)**
+محبت نہیں ہوئی کہ آئی ہے مہرباں کیوں ہے کہ اس
+کو ملنا نہ یہ تو مرے بعد منصفی سے ہم نے تو ان
+تیز ہے انتظار نہیں ہوتی ان کی آنکھوں میں کچھ
+کوئی کہانی تھی وہ بھی سمجھتے تھے پھر تو دیکھو
+تو غالبؔ میں کسی سے ک
+#### **Transformer (Adam)**
 
-```
+دل کی بات وہ سب کچھ کہتا ہے، لیکن وقت کی رہنمائی میں ہم کہیں کھو جاتے
+ہیں،\
+اور ہر لمحہ جو گزرتا ہے، نئے اشعار کی شکل اختیار کر لیتا ہے
+
+## 📁 Folder Structure
+
+    urdu-poetry-project/
+    │
+    ├── data/                # Raw and processed data
+    ├── notebooks/           # Jupyter notebooks for experiments
+    ├── models/              # Saved models & checkpoints
+    ├── results/             # Metrics, generated poetry, logs
+    ├── visualizations/      # PNG plots
+    ├── logs/                # TensorBoard logs
+    ├── scripts/             # Training & evaluation scripts
+    └── main.py              # Entry point
+
+## 🚀 Getting Started
+
+### 1. Create Virtual Environment
+
+    python -m venv urdu-poetry-env
+    source urdu-poetry-env/bin/activate  # Linux/Mac
+    urdu-poetry-env\Scripts\activate   # Windows
 
 ### 2. Install Dependencies
-```bash
-pip install tensorflow torch pandas numpy datasets scikit-learn matplotlib tqdm
-```
+
+    pip install tensorflow torch pandas numpy datasets scikit-learn matplotlib seaborn tqdm
 
 ### 3. Verify GPU
-```bash
-python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
-```
 
-Notes
+    python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 
-All experiments are fully reproducible.
+## 📌 Future Work
 
-GPU acceleration is strongly recommended for training deep learning models.
-
-Each model-optimizer combination is saved, logged, and compared systematically.
-
-Results include both quantitative metrics and generated poetry samples.
+-   Word-level tokenization for richer semantics\
+-   Hyperparameter tuning with Optuna\
+-   Fine-tune GPT-based architectures for Urdu\
+-   Meter detection & automatic rhyme scoring
