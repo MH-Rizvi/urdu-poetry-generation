@@ -76,10 +76,10 @@ test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=BATCH_SIZE)
 # Step 3: LSTM Model
 # ------------------------------
 class LSTMModel(nn.Module):
-    def __init__(self, vocab_size, embed_dim=256, hidden_dim=512):
+    def __init__(self, vocab_size, embed_dim=256, hidden_dim=768):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=3, dropout=0.2, batch_first=True)
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=2, dropout=0.2, batch_first=True)
         self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x):
@@ -208,10 +208,10 @@ optimizers = ["adam", "rmsprop", "sgd"]
 
 for opt in optimizers:
     train_model(
-        model=LSTMModel(vocab_size=vocab_size, embed_dim=256, hidden_dim=512),
+        model=LSTMModel(vocab_size=vocab_size, embed_dim=256, hidden_dim=768),
         optimizer_name=opt,
-        model_name="lstm_Layers(3)",
-        hyperparams={"embed_dim": 256, "hidden_dim": 512, "dropout": 0.2, "num_layers": 3}
+        model_name="lstm_Hidden768",
+        hyperparams={"embed_dim": 256, "hidden_dim": 768, "dropout": 0.2, "num_layers": 2}
     )
 
 print("LSTM training complete. Metrics saved at:", CSV_PATH)
