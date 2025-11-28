@@ -42,12 +42,12 @@ if torch.cuda.is_available():
 else:
     print("Using CPU. Training will be slower.")
 
-MODEL_DIR = "models/"
-RESULTS_DIR = "results/metrics/"
+MODEL_DIR = "models/LSTM"
+RESULTS_DIR = "results/metrics/LSTM"
 os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-CSV_PATH = os.path.join(RESULTS_DIR, "all_metrics.csv")
+CSV_PATH = os.path.join(RESULTS_DIR, "new_metrics.csv")
 
 # ------------------------------
 # Step 1: Load data + tokenizer
@@ -79,7 +79,7 @@ class LSTMModel(nn.Module):
     def __init__(self, vocab_size, embed_dim=256, hidden_dim=512):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=2, dropout=0.2, batch_first=True)
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=3, dropout=0.2, batch_first=True)
         self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x):
@@ -176,43 +176,26 @@ def train_model(model, optimizer_name, model_name, hyperparams):
     test_loss, perplexity = evaluate_model(model, test_loader, DEVICE)
     print(f"Test Loss ({optimizer_name}): {test_loss:.4f}, Perplexity: {perplexity:.2f}")
 
-    # Generate text for 3 temps × 5 seeds
-    for temp in [0.7, 1.0, 1.3]:
-        for seed in SEED_TEXTS:
-            text = generate_text(
-                model=model,
-                tokenizer=tokenizer,
-                seed_text=seed,
-                input_length=input_length,
-                device=DEVICE,
-                num_chars=NUM_CHARS_TO_GENERATE,
-                temperature=temp
-            )
-            filename = f"generated_{seed}_temp_{temp}.txt"
-            with open(os.path.join(save_path, filename), "w", encoding="utf-8") as f:
-                f.write(text)
 
-            # CSV logging
-            write_header = not os.path.exists(CSV_PATH)
-            row = {
-                "model": model_name,
-                "optimizer": optimizer_name,
-                "hyperparams": str(hyperparams),
-                "seed_word": seed,
-                "temperature": temp,
-                "train_loss": avg_train_loss,
-                "train_acc": avg_train_acc,
-                "val_loss": avg_val_loss,
-                "val_acc": avg_val_acc,
-                "test_loss": test_loss,
-                "perplexity": perplexity
-            }
-
-            with open(CSV_PATH, "a", newline="", encoding="utf-8") as f_csv:
-                writer = csv.DictWriter(f_csv, fieldnames=row.keys())
-                if write_header:
-                    writer.writeheader()
-                writer.writerow(row)
+    # CSV logging
+    write_header = not os.path.exists(CSV_PATH)
+    row = {
+        "model": model_name,
+        "optimizer": optimizer_name,
+        "hyperparams": str(hyperparams),
+        "train_loss": avg_train_loss,
+        "train_acc": avg_train_acc,
+        "val_loss": avg_val_loss,
+        "val_acc": avg_val_acc,
+        "test_loss": test_loss,
+        "perplexity": perplexity
+    }
+    
+    with open(CSV_PATH, "a", newline="", encoding="utf-8") as f_csv:
+        writer = csv.DictWriter(f_csv, fieldnames=row.keys())
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
 
     # Clean GPU memory
     del model
@@ -227,8 +210,8 @@ for opt in optimizers:
     train_model(
         model=LSTMModel(vocab_size=vocab_size, embed_dim=256, hidden_dim=512),
         optimizer_name=opt,
-        model_name="lstm",
-        hyperparams={"embed_dim": 256, "hidden_dim": 512}
+        model_name="lstm_Layers(3)",
+        hyperparams={"embed_dim": 256, "hidden_dim": 512, "dropout": 0.2, "num_layers": 3}
     )
 
 print("LSTM training complete. Metrics saved at:", CSV_PATH)
