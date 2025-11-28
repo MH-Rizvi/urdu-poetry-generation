@@ -6,8 +6,8 @@ import numpy as np
 # ------------------------------
 # Paths & Device
 # ------------------------------
-MODEL_PATH = r"models/LSTM/lstm_adam/model.pt"  # Change to your saved LSTM path
-SAVE_DIR = r"models/LSTM/lstm_adam/generated_texts"
+MODEL_PATH = r"models/LSTM/lstm_Layers(3)_adam/model.pt"  # Change to your saved LSTM path
+SAVE_DIR = r"models/LSTM/lstm_Layers(3)_adam/generated_texts"
 TOKENIZER_PATH = r"data/processed/tokenizer.pkl"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -46,7 +46,7 @@ class LSTMModel(torch.nn.Module):
 # ------------------------------
 # Instantiate model & load weights
 # ------------------------------
-num_layers = 2
+num_layers = 3
 dropout = 0.2
 
 model = LSTMModel(
