@@ -112,20 +112,51 @@ All plots are saved in the `visualizations/` folder as PNG files. These clearly 
 
 ---
 
-## Folder Structure
+## 📂 Directory Structure
 
-urdu-poetry-project/  
-│  
-├── data/           # Raw and processed dataset  
-├── notebooks/      # Jupyter notebooks for experiments  
-├── models/         # Saved models and checkpoints  
-├── results/        # Training metrics, plots, generated poetry  
-├── visualizations/ # PNG plots for comparison  
-├── logs/           # TensorBoard or other logs  
-├── scripts/        # Training and evaluation scripts  
-└── main.py         # Entry point for training & evaluation  
-
----
+```text
+PROJECT - URDU POETRY GENERATION/
+│
+├── data/
+│   ├── raw/
+│   │   └── raw_dataset.csv          # Original dataset from Hugging Face
+│   └── processed/
+│       ├── cleaned_poetry.csv       # Cleaned text data
+│       ├── tokenizer.pkl            # Saved Keras tokenizer
+│       └── [train/val/test].npy     # Processed numpy arrays for training
+│
+├── models/                          # Saved models, training history, and samples
+│   ├── LSTM/
+│   ├── RNN/
+│   └── Transformer/
+│       # Each subfolder contains:
+│       # - Generated text samples (.txt)
+│       # - Training history (.npy)
+│       # - Saved Model weights (.pt)
+│
+├── results/
+│   └── metrics/
+│       ├── new_metrics.csv          # Combined performance metrics for all models
+│       └── [Model_Folders]/         # Specific loss/accuracy plots per model
+│
+├── scripts/                         # Source code
+│   ├── 01_load_explore_data.py      # EDA and data loading
+│   ├── 02_preprocess_data.py        # Tokenization and sequence padding
+│   ├── 03_train_lstm.py             # Training script for LSTM
+│   ├── 03_train_rnn.py              # Training script for RNN
+│   ├── 03_train_transformer.py      # Training script for Transformer
+│   ├── generate_textfiles.py        # Script to generate poetry samples
+│   ├── utils.py                     # Helper functions
+│   └── visualization.py             # Plotting functions
+│
+├── visualizations/                  # Final Comparative Analysis Plots
+│   ├── perplexity_bar_plot.png
+│   ├── training_time_bar_plot.png
+│   └── perplexity_heatmap.png
+│
+├── requirements.txt                 # Project dependencies
+└── README.md
+```
 
 ## Getting Started
 
