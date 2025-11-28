@@ -2,13 +2,12 @@ import os
 import torch
 import pickle
 import numpy as np
-import torch.nn as nn
 
 # ------------------------------
-# Paths
+# Paths & Device
 # ------------------------------
-MODEL_PATH = r"models/RNN/rnn_Layers(2)_Dropout(0.2)_sgd/model.pt"
-SAVE_DIR = r"models/RNN/rnn_Layers(2)_Dropout(0.2)_sgd/generated_texts"
+MODEL_PATH = r"models/LSTM/lstm_adam/model.pt"  # Change to your saved LSTM path
+SAVE_DIR = r"models/LSTM/lstm_adam/generated_texts"
 TOKENIZER_PATH = r"data/processed/tokenizer.pkl"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -27,37 +26,33 @@ X_train = np.load("data/processed/X_train.npy")
 input_length = X_train.shape[1]
 
 # ------------------------------
-# RNN Model class definition
+# Define LSTM model
 # ------------------------------
-class SimpleRNNModel(nn.Module):
-    def __init__(self, vocab_size, embed_dim=100, hidden_dim=150, num_layers=2, dropout=0.2):
+class LSTMModel(torch.nn.Module):
+    def __init__(self, vocab_size, embed_dim=256, hidden_dim=512, num_layers=2, dropout=0.2):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.rnn = nn.RNN(
-            embed_dim, hidden_dim, batch_first=True,
-            num_layers=num_layers, dropout=dropout
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
+        self.lstm = torch.nn.LSTM(
+            embed_dim, hidden_dim, num_layers=num_layers, dropout=dropout, batch_first=True
         )
-        self.fc = nn.Linear(hidden_dim, vocab_size)
+        self.fc = torch.nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x):
         x = self.embedding(x)
-        out, _ = self.rnn(x)
+        out, _ = self.lstm(x)
         out = self.fc(out[:, -1, :])
         return out
 
 # ------------------------------
-# Model hyperparameters (set manually)
+# Instantiate model & load weights
 # ------------------------------
-num_layers = 2   # change as needed
-dropout = 0.2    # change as needed
+num_layers = 2
+dropout = 0.2
 
-# ------------------------------
-# Instantiate model and load weights
-# ------------------------------
-model = SimpleRNNModel(
+model = LSTMModel(
     vocab_size=vocab_size,
-    embed_dim=100,
-    hidden_dim=150,
+    embed_dim=256,
+    hidden_dim=512,
     num_layers=num_layers,
     dropout=dropout
 )
@@ -68,16 +63,17 @@ model.to(DEVICE)
 model.eval()
 
 # ------------------------------
-# Text generation function
+# Multi-line text generation for LSTM
 # ------------------------------
-def generate_text(
+def generate_text_poetry_lstm(
     model,
     tokenizer,
     seed_text,
     input_length,
     device,
     num_chars=200,
-    temperature=0.8
+    temperature=1.0,
+    max_line_chars=45
 ):
     generated = list(seed_text)
     idx_to_char = {idx: char for char, idx in tokenizer.word_index.items()}
@@ -97,7 +93,22 @@ def generate_text(
         next_char = idx_to_char.get(predicted_id, "")
         generated.append(next_char)
 
-    return ''.join(generated)
+    text = ''.join(generated)
+
+    # Split into lines without breaking words
+    words = text.split(' ')
+    lines = []
+    current_line = ""
+    for w in words:
+        if len(current_line) + len(w) + 1 <= max_line_chars:
+            current_line += (" " if current_line else "") + w
+        else:
+            lines.append(current_line)
+            current_line = w
+    if current_line:
+        lines.append(current_line)
+
+    return '\n'.join(lines)
 
 # ------------------------------
 # Generation settings
@@ -106,21 +117,22 @@ NUM_CHARS_TO_GENERATE = 200
 SEED_TEXTS = ["محبت", "دل", "شام", "یاد", "خوشی"]
 TEMPERATURES = [0.7, 1.0, 1.3]
 
-# ------------------------------
-# Generate text files
-# ------------------------------
 os.makedirs(SAVE_DIR, exist_ok=True)
 
+# ------------------------------
+# Generate poetry files
+# ------------------------------
 for temp in TEMPERATURES:
     for seed in SEED_TEXTS:
-        output_text = generate_text(
+        output_text = generate_text_poetry_lstm(
             model=model,
             tokenizer=tokenizer,
             seed_text=seed,
             input_length=input_length,
             device=DEVICE,
             num_chars=NUM_CHARS_TO_GENERATE,
-            temperature=temp
+            temperature=temp,
+            max_line_chars=45
         )
 
         filename = f"{seed}_temp_{temp}.txt"
@@ -134,6 +146,6 @@ for temp in TEMPERATURES:
 # ------------------------------
 # Print model summary
 # ------------------------------
-print("Model Architecture:")
+print("\nModel Architecture:")
 print(model)
 print(f"Num layers: {num_layers}, Dropout: {dropout}")
