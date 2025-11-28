@@ -117,13 +117,11 @@ All plots are saved in the `visualizations/` folder as PNG files. These clearly 
 urdu-poetry-project/  
 │  
 ├── data/           # Raw and processed dataset  
-├── notebooks/      # Jupyter notebooks for experiments  
 ├── models/         # Saved models and checkpoints  
 ├── results/        # Training metrics, plots, generated poetry  
-├── visualizations/ # PNG plots for comparison  
-├── logs/           # TensorBoard or other logs  
+├── visualizations/ # PNG plots for comparison   
 ├── scripts/        # Training and evaluation scripts  
-└── main.py         # Entry point for training & evaluation  
+└── requirements.txt   # necessary imports 
 
 ---
 
